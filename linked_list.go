@@ -8,12 +8,10 @@ import (
 type Node struct {
 	key   interface{}
 	value interface{}
-	// 过期时间 纳秒
+	// Expiration time in nanoseconds
 	expireTime time.Time
 	// ---------
-	// 前向指针
 	Prev *Node
-	// 后向指针
 	Next *Node
 }
 
@@ -38,9 +36,8 @@ func (n *Node) NextData() interface{} {
 	return n.Next.value
 }
 
-// 双向链表
-// 尾部的Node更新
-// 如果进行LRU删除，删除头部的数据
+// Doubly linked list
+// If performing LRU deletion, delete the header data
 type DoubleLinkedList struct {
 	count int
 	Head  *Node
