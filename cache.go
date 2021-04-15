@@ -18,10 +18,12 @@ type Cache struct {
 	// callback
 	// callback trigger by nearly-expire key
 	nearlyExpireCallBack CallBackFunc
-	// A parameter that affects the calculation of nearExpire
-	// nearlyExpire = expire * beta * log(rand())
-	// default 0.9
-	nearlyExpireBeta float64
+
+	nearlyExpire struct {
+		TimeToCompute time.Duration
+		Beta          float64
+	}
+
 	// callback trigger by expired key
 	expireCallBack CallBackFunc
 }
@@ -31,7 +33,8 @@ func NewCache(size int) *Cache {
 	c.limitSize = size
 	c.internalMap = make(map[interface{}]*Node)
 	c.list = NewDoubleLinkedList()
-	c.nearlyExpireBeta = 0.9
+	c.nearlyExpire.Beta = 2
+	c.nearlyExpire.TimeToCompute = 100 * time.Millisecond
 	return &c
 }
 
@@ -44,7 +47,10 @@ func (c *Cache) SetExpireCallBack(f CallBackFunc) {
 }
 
 func (c *Cache) SetNearlyExpireBeta(beta float64) {
-	c.nearlyExpireBeta = beta
+	c.nearlyExpire.Beta = beta
+}
+func (c *Cache) SetNearlyExpireTimeToCompute(d time.Duration) {
+	c.nearlyExpire.TimeToCompute = d
 }
 
 func (c *Cache) Size() int {
@@ -86,9 +92,13 @@ func (c *Cache) Get(key interface{}) (interface{}, bool) {
 }
 
 /*
-	expire * beta * log(rand())
-	beta = 0.9
+expire + ( timeToCompute * beta * log(rand()) )
+currentTime 是当前时间戳。
+timeToCompute 是重新计算缓存值所花费的时间。
+beta 是一个大于 0 的非负数，默认值为 1，是可配置的。
+rand()是一个返回 0 到 1 之间随机数的函数。
+expiry 是缓存值未来被设置为过期的时间戳。
 */
-func CalcuNearlyExpire(expire time.Duration, beta float64) time.Duration {
-	return time.Duration(float64(expire) * beta * math.Log(rand.Float64()))
+func CalcuNearlyExpire(expire time.Duration, timeToCompute time.Duration, beta float64) time.Duration {
+	return expire - time.Duration(float64(timeToCompute)*beta*math.Log(rand.Float64()/2+0.1))
 }
